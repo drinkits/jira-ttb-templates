@@ -1,0 +1,43 @@
+#set( $item = $itemHolder.getItemWorklog())
+#set( $issues = $itemHolder.getItemIssue())
+#set($periods = $item.getTimeSpentRollOnDateUnit($calendarConstant))
+#set( $DateString = '' )
+
+
+<table class="grid" border="0" cellpadding="3" cellspacing="1" width="100%">
+
+	<thead>
+		<tr class="rowAlternate">
+			<th class="ttbtext">$i18n.getText("issue.column.heading.issuekey")</th>
+            <th class="ttbtext">$i18n.getText("common.words.summary")</th>
+			#foreach ($period in $periods)
+				<th#if ($tools.getPrettyDate($toDay) == $DateString.format("%1$td.%1$tm.%1$tY",$period.getStartDate())) style="background:#e6ffe6"#end>$tools.getCalendarConstantPretty($calendarConstant,$period.getStartDate())</th>
+			#end
+			<th>$i18n.getText("common.words.total")</th>
+		</tr>
+	</thead>
+	
+	<tbody>
+		#foreach ($issue in $issues.getItems())
+			<tr #if ($velocityCount % 2 == 1) class="rowNormal" #else class="rowAlternate" #end >
+				<td width="1%" nowrap><a style="#if ($issue.getResolutionId() == 10000 || $issue.getResolutionId() == 1 || $issue.getResolutionId() == 2)text-decoration: line-through;#end" href="$baseurl/browse/$issue.getKey()">$issue.getKey()</a></td>
+                <td class="ttbtext">$textutils.htmlEncode($issue.getSummary())</td>
+				#foreach ($period in $periods)
+					<td#if ($tools.getPrettyDate($toDay) == $DateString.format("%1$td.%1$tm.%1$tY",$period.getStartDate())) style="background:#e6ffe6"#end class="ttbright" nowrap>$tools.getTimePretty($period.getSumTimeSpent($issue))</td>
+                #end
+				<td class="ttbright" nowrap><b>$tools.getTimePretty($issues.getTimeSpent($issue))</b></td>
+			</tr>
+		#end
+	</tbody>
+	
+	<tfoot>
+		<tr class="rowNormal">
+        	<th></th>
+			<th class="ttbright" nowrap>$i18n.getText("common.words.total"):</th>
+			#foreach ($period in $periods)
+				<td class="ttbright" nowrap"#if ($tools.getPrettyDate($toDay) == $DateString.format("%1$td.%1$tm.%1$tY",$period.getStartDate())) style="background:#e6ffe6"#end><b>$tools.getTimePretty($period.getSumTimeSpent())</b></td>
+			#end
+			<td class="ttbright" nowrap><b>$tools.getTimePretty($itemHolder.getItemWorklog().getTimeSpent())</b></td>
+		</tr>
+	</tfoot>
+</table>
