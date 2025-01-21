@@ -1,0 +1,81 @@
+#set( $items = $itemHolder.getItemWorklog())
+#set ($users = $itemHolder.getItemUser())
+#set ($issues = $itemHolder.getItemIssue())
+#set ($periods = $items.getTimeSpentRollOnDateUnit($calendarConstant))
+#set ($DateString = '')
+#set ($manager = $tools.getTemplateManager())
+#set ($templaterep = $timeTracking.getTimeTrackingTemplate().getKey())
+#set ($int = $tools.getInt($relativeDurationParam.substring(0, 1)))
+#set ($previncr = $int + 1)
+#set ($nextincr = $int - 1)
+#set ($prevweek = $previncr+$relativeDurationParam.substring(1))
+#set ($nextweek = $nextincr+$relativeDurationParam.substring(1))
+
+<table class="aui">
+#foreach ($user in $users.getItems())
+	<b> Atskaite par</b>: $user.getDisplayName() <small>($user.getName())</small>
+    #set ($targetUser = $user.getName())
+	#if( $velocityCount > 2 )
+        #break
+    #end
+#end
+<br><a href="$baseurl/secure/ConfigureReport.jspa?reportKey=com.ja.jira.plugin.ttb%3AttbReportPeriod&Next=Next&projectOrFilterId=filter-$timeTracking.getFilterProjectId()&relativeduration=$prevweek&duration=&period=$calendarConstant&templateKey=$timeTracking.getTimeTrackingTemplate().getKey()&targetUser=$targetUser&targetGroup=&overrideMaxIssues=false">
+<button class="aui-button" resolved><< Iepriekšējā nedēļa</button></a>
+<a href="$baseurl/secure/ConfigureReport.jspa?reportKey=com.ja.jira.plugin.ttb%3AttbReportPeriod&Next=Next&projectOrFilterId=filter-$timeTracking.getFilterProjectId()&relativeduration=$nextweek&duration=&period=$calendarConstant&templateKey=$timeTracking.getTimeTrackingTemplate().getKey()&targetUser=$targetUser&targetGroup=&overrideMaxIssues=false">
+<button class="aui-button" resolved#if ($nextincr < 0) disabled#end>Nākamā nedēļa >></button></a>
+  <thead>
+    <tr class="rowAlternate">
+        <th>$i18n.getText("issue.column.heading.project")</th>
+		<th>$i18n.getText("issue.column.heading.issuekey")</th>
+        <th>$i18n.getText("common.words.summary")</th>
+		<th style="white-space: nowrap;">Worklog komentārs</th>
+        #foreach ($period in $periods)
+            <th style="white-space: nowrap">$tools.getCalendarConstantPretty($calendarConstant,$period.getStartDate())</th>
+            #set( $colspan = $velocityCount+1)
+        #end
+        <th>$i18n.getText("common.words.total")</td>
+    </tr>
+  </thead>
+  <tbody>
+    #foreach ($issue in $issues.getItems())
+        <tr style="background:#f2f7ff">
+			#set($rowspan =$rowspan+1)
+        	<td style="white-space: nowrap;">$issue.getProject().getString("name")</td>
+            <td><a style="#if ($issue.getResolutionId() == 10000 || $issue.getResolutionId() == 1 || $issue.getResolutionId() == 2)text-decoration: line-through;#end" href="$baseurl/browse/$issue.getKey()">$issue.getKey()</a></td>
+            <td>$issue.getSummary()</td>
+            <td colspan="$colspan"></td>
+            <td><b>$tools.getTimePretty($issues.getTimeSpent($issue))</b></td>
+        </tr>
+        #foreach ($item in $issues.getWorklogs($issue))
+            #set($rowspan = $velocityCount+1)
+            #set($timeSpentSum = 0)
+            <tr>
+                	<td></td>
+                    <td></td>
+                    <td></td>
+                    <td>#if ($item.getComment())$item.getComment()#else - #end</td>
+                #set($timeSpentSum = 0)
+				#foreach ($period in $periods)
+                    #set( $StartDt = $DateString.format("%1$tY-%1$tm-%1$td",$item.getStartDate()) )##
+                    #set( $StartP = $DateString.format("%1$tY-%1$tm-%1$td",$period.getStartDate()) )##
+                    #set( $EndP = $DateString.format("%1$tY-%1$tm-%1$td",$period.getEndDate()) )##
+					<td#if ($tools.getPrettyDate($toDay) == $DateString.format("%1$td.%1$tm.%1$tY.",$period.getStartDate())) style="background:#f5f9ff"#end>#if ($StartDt == $StartP)$tools.getTimePretty($item.getTimeSpent())#end</td>
+                #end
+                	<td class="ttbright" nowrap><b>#if ($timeSpentSum > 0)$tools.getTimePretty($timeSpentSum)#end</b></td>
+            </tr>
+        #end
+    #end
+  </tbody>
+  <tfoot>
+    <tr>
+    	<td></td>
+        <td></td>
+        <td></td>
+        <td style="text-align: right;"><b>$i18n.getText("common.words.total"):</b></td>
+        #foreach ($period in $periods)
+            <td#if ($tools.getPrettyDate($toDay) == $DateString.format("%1$td.%1$tm.%1$tY.",$period.getStartDate())) style="background:#f5f9ff"#end><b>$tools.getTimePretty($period.getSumTimeSpent())</b></td>
+        #end
+        <td><b>$tools.getTimePretty($itemHolder.getItemWorklog().getTimeSpent())</b></td>
+    </tr>
+  </tfoot>
+</table>
