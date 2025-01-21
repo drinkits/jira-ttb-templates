@@ -1,0 +1,43 @@
+#set($item = $itemHolder.getItemWorklog())
+#set($objects = $itemHolder.getItemUser())
+#set($periods = $item.getTimeSpentRollOnDateUnit($calendarConstant))
+#set ($manager = $tools.getTemplateManager())
+#set($templaterep = $manager.getTemplateByKey('copy-of-copy-of-1-portlet_periodissuedetail'))
+#set( $DateString = '' )
+
+<table class="grid" border="0" cellpadding="3" cellspacing="1" width="100%">
+
+	<thead>
+		<tr class="rowAlternate">
+			<th class="ttbleft">$i18n.getText("common.words.user")</th>
+			#foreach ($period in $periods)
+				<th#if ($tools.getPrettyDate($toDay) == $DateString.format("%1$td.%1$tm.%1$tY",$period.getStartDate())) style="background:#e6ffe6" onMouseOver="this.style.color='#333'"#end>$tools.getCalendarConstantPretty($calendarConstant,$period.getStartDate())</th>
+			#end
+			<th>$i18n.getText("common.words.total")</th>
+		</tr>
+	</thead>
+	
+	<tbody>
+		#foreach ($object in $objects.getItems())
+			<tr #if ($velocityCount % 2 == 1) class="rowNormal" #else class="rowAlternate" #end >
+				<td width="1%" nowrap>
+                <a href="$baseurl/secure/ConfigureReport.jspa?reportKey=com.ja.jira.plugin.ttb%3AttbReportPeriod&Next=Next&projectOrFilterId=filter-$timeTracking.getFilterProjectId()&relativeduration=$relativeDurationParam&duration=&period=$calendarConstant&templateKey=$templaterep.getTemplateKey()&targetUser=$object.getName()&targetGroup=&overrideMaxIssues=false">
+                $object.getDisplayName() <small>($object.getName())</small></a></td>
+				#foreach ($period in $periods)
+					<td class="ttbright" nowrap#if ($tools.getPrettyDate($toDay) == $DateString.format("%1$td.%1$tm.%1$tY",$period.getStartDate())) style="background:#e6ffe6" onMouseOver="this.style.color='#333'"#end>$tools.getTimePretty($period.getSumTimeSpent($object))</td>
+				#end
+				<td class="ttbright"><b>$tools.getTimePretty($objects.getTimeSpent($object))</b></td>
+			</tr>
+		#end
+	</tbody>
+	
+	<tfoot>
+		<tr>
+			<th class="ttbright">$i18n.getText("common.words.total"):</th>
+			#foreach ($period in $periods)
+				<td class="ttbright"#if ($tools.getPrettyDate($toDay) == $DateString.format("%1$td.%1$tm.%1$tY",$period.getStartDate())) style="background:#e6ffe6" onMouseOver="this.style.color='#333'"#end><b>$tools.getTimePretty($period.getSumTimeSpent())</b></td>
+			#end
+			<td class="ttbright"><b>$tools.getTimePretty($item.getTimeSpent())</b></td>
+		</tr>
+	</tfoot>
+</table>
