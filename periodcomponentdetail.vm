@@ -1,0 +1,124 @@
+#set($item = $itemHolder.getItemWorklog())
+#set($objects = $itemHolder.getItemUser())
+#set($periods = $item.getTimeSpentRollOnDateUnit($calendarConstant))
+#set($DateString = '')
+#set($componentAccessorClass        = $constantsManager.getClass().getClassLoader().findClass('com.atlassian.jira.component.ComponentAccessor'))
+#set($componentAccessorConstructor  = $componentAccessorClass.getConstructor())
+#set($componentAccessor             = $componentAccessorConstructor.newInstance())
+#set($searchRequestStoreClass = $componentAccessor.getClass().getClassLoader().loadClass("com.atlassian.jira.issue.search.SearchRequestStore"))
+#set($searchRequestStoreManager = $componentAccessor.getComponent($searchRequestStoreClass))
+#set($searchClass = $componentAccessor.getClass().getClassLoader().loadClass("com.atlassian.jira.bc.issue.search.SearchService"))
+#set($searchManager = $componentAccessor.getComponent($searchClass))
+#set($user = $componentAccessor.getJiraAuthenticationContext().getLoggedInUser())
+#set($pagerManager = $componentAccessor.getClass().getClassLoader().loadClass("com.atlassian.jira.web.bean.PagerFilter"))
+#set($jqlQueryParser = $componentAccessor.getClass().getClassLoader().loadClass("com.atlassian.jira.jql.parser.JqlQueryParser"))
+#set($jqlQueryParserM = $componentAccessor.getComponent($jqlQueryParser))
+
+#set( $input = $timeTracking.getSearchRequest().getQuery().toString() )
+#set( $output = $input.replaceAll("\{filter in \(", "").replaceAll("\)\}", "").replaceAll('"', '').split(","))
+#set($filtersearch = [])
+#foreach($part in $output)
+    #set($bar = $filtersearch.add($searchRequestStoreManager.findByNameIgnoreCase($part.trim())[0]))
+#end
+#set($iden = 0)
+#set($catMap = {})
+#foreach($filter in $filtersearch)
+	#set($iden = $iden+1)
+    #set ($searchResult = $searchManager.search($user, $filter.getQuery(), $pagerManager.getUnlimitedFilter()))
+    #set($catKeys = [])
+    #foreach($issue in $searchResult.getIssues())
+    	#set($bar = $catKeys.add($issue.getKey()))
+    #end
+    #set($bar = $catMap.put($filter.getName(), $catKeys))
+#end
+
+#set($timeSpentSumVertSum = {})
+#set($timeSpentSumCatSum = {})
+<table class="grid" border="1" cellpadding="3" cellspacing="1" width="100%">
+	<thead>
+		<tr>
+			<th class="ttbleft">$i18n.getText("common.words.user")</th>
+			#foreach ($period in $periods)
+				<th#if ($tools.getPrettyDate($toDay) == $DateString.format("%1$td.%1$tm.%1$tY.",$period.getStartDate())) style="background:#edf6ff" onMouseOver="this.style.color='#333'"#end  colspan="$iden">$tools.getCalendarConstantPretty($calendarConstant,$period.getStartDate())</th>
+			#end
+			<th>$i18n.getText("common.words.total")</th>
+		</tr>
+	</thead>
+	
+	<tbody>
+    		<tr>
+            	<td></td>
+                #foreach ($period in $periods)
+					#foreach ($cat in $catMap.entrySet())
+					<td style="font-size: 11px">$cat.key</td>
+					#end
+				#end
+                <td></td>
+            </tr>
+        #set($timeSpentSumUserCol = {})
+        #set($timeSpentSumUserColTot = 0)
+        #foreach ($object in $objects.getItems())
+      	    #set ($timeSpentSumUser = 0)
+       		#foreach ($period in $periods)
+            	#foreach ($cat in $catMap.entrySet())
+                	#set ($timeSpentSum = 0)
+                    #foreach ($issp in $period.getIssues())
+                    	#if ($cat.value.contains($issp.getKey()))
+                        	#foreach ($wrkl in $period.getWorklogs($issp))
+								#if ($wrkl.getAuthorObject() == $object)
+                                	#set ($timeSpentSum = $timeSpentSum + $wrkl.getTimeSpent())
+                                #end
+                           	#end
+                        #end
+                    #end
+                    #set ($timeSpentSumUser = $timeSpentSumUser + $timeSpentSum)
+       			#end
+            #end
+            #set($bar = $timeSpentSumUserCol.put($object,$timeSpentSumUser))
+            #set($timeSpentSumUserColTot = $timeSpentSumUserColTot + $timeSpentSumUser)
+		#end
+		#foreach ($object in $objects.getItems())
+			<tr>
+				<td class="ttbtextnowrap" width="1%">$object.getDisplayName()</td>                
+				#foreach ($period in $periods)
+                    #foreach ($cat in $catMap.entrySet())
+                    	#set ($timeSpentSumVert = 0)
+                        <td> 
+                        #set ($timeSpentSum = 0)
+                        #foreach ($issp in $period.getIssues())
+                            #if ($cat.value.contains($issp.getKey()))
+                            	#foreach ($wrkl in $period.getWorklogs($issp))
+									#if ($wrkl.getAuthorObject() == $object)
+                                    	#set ($timeSpentSum = $timeSpentSum + $wrkl.getTimeSpent())
+                                    #end
+                            	#end
+                            #end
+                        #end
+                        #set ($timeSpentSumUser = $timeSpentSumUser + $timeSpentSum)
+                        $tools.getTimePretty($timeSpentSum) ($tools.getPercentNoFraction($timeSpentSum,$period.getSumTimeSpent($object))%)
+                        #set ($timeSpentSumVert = $timeSpentSumVert + $timeSpentSum)
+                        #set($periodSub = $period + '-' + $cat.key)
+                        #if ($timeSpentSumVertSum.get($periodSub))
+                        	#set($timeSpentSumVert = $timeSpentSumVert+$timeSpentSumVertSum.get($periodSub))
+                        #end
+                        #set($bar = $timeSpentSumVertSum.put($periodSub,$timeSpentSumVert))
+                        #set($bar = $timeSpentSumCatSum.put($periodSub,$period.getSumTimeSpent()))
+                        </td>
+                    #end
+				#end
+				<td class="ttbtotal"><b>$tools.getTimePretty($timeSpentSumUserCol.get($object))</b></td>
+			</tr>
+		#end
+	</tbody>
+	
+	<tfoot>
+		<tr>
+			<th>$i18n.getText("common.words.total")</th>
+            #foreach ($perdiodSum in $timeSpentSumVertSum.entrySet())
+                <td><b>$tools.getTimePretty($perdiodSum.value) ($tools.getPercentNoFraction($perdiodSum.value,$timeSpentSumCatSum.get($perdiodSum.key))%)</b></td>
+            #end
+			<td class="ttbtotal"><b>$tools.getTimePretty($timeSpentSumUserColTot)
+            </b></td>
+		</tr>
+	</tfoot>
+</table>
